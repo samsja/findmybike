@@ -1,0 +1,116 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: connection-pool
+  namespace: findmybike
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  - services
+  verbs:
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: connection-pool-binding
+  namespace: findmybike
+roleRef:
+  apiGroup: ''
+  kind: Role
+  name: connection-pool
+subjects:
+- apiGroup: ''
+  kind: ServiceAccount
+  name: default
+---
+apiVersion: v1
+data:
+  JINA_LOG_LEVEL: INFO
+  pythonunbuffered: '1'
+  worker_class: uvicorn.workers.UvicornH11Worker
+kind: ConfigMap
+metadata:
+  name: executor1-configmap
+  namespace: findmybike
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: executor1
+  name: executor1
+  namespace: findmybike
+spec:
+  ports:
+  - name: port
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: executor1
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: executor1
+  namespace: findmybike
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: executor1
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: executor1
+        jina_deployment_name: executor1
+        ns: findmybike
+        pod_type: WORKER
+        shard_id: '0'
+    spec:
+      containers:
+      - args:
+        - executor
+        - --name
+        - executor1
+        - --k8s-namespace
+        - findmybike
+        - --uses
+        - config.yml
+        - --port
+        - '8080'
+        - --uses-metas
+        - '{}'
+        - --native
+        command:
+        - jina
+        env:
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: JINA_DEPLOYMENT_NAME
+          value: executor1
+        envFrom:
+        - configMapRef:
+            name: executor1-configmap
+        image: jinahub/zb38xlt4:622366572d23850aeb64a08b
+        imagePullPolicy: IfNotPresent
+        name: executor
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: 8080
