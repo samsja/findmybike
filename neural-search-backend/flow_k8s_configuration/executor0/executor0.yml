@@ -1,0 +1,116 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: connection-pool
+  namespace: findmybike
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  - services
+  verbs:
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: connection-pool-binding
+  namespace: findmybike
+roleRef:
+  apiGroup: ''
+  kind: Role
+  name: connection-pool
+subjects:
+- apiGroup: ''
+  kind: ServiceAccount
+  name: default
+---
+apiVersion: v1
+data:
+  JINA_LOG_LEVEL: INFO
+  pythonunbuffered: '1'
+  worker_class: uvicorn.workers.UvicornH11Worker
+kind: ConfigMap
+metadata:
+  name: executor0-configmap
+  namespace: findmybike
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: executor0
+  name: executor0
+  namespace: findmybike
+spec:
+  ports:
+  - name: port
+    port: 8080
+    protocol: TCP
+    targetPort: 8080
+  selector:
+    app: executor0
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: executor0
+  namespace: findmybike
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: executor0
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: executor0
+        jina_deployment_name: executor0
+        ns: findmybike
+        pod_type: WORKER
+        shard_id: '0'
+    spec:
+      containers:
+      - args:
+        - executor
+        - --name
+        - executor0
+        - --k8s-namespace
+        - findmybike
+        - --uses
+        - config.yml
+        - --port
+        - '8080'
+        - --uses-metas
+        - '{}'
+        - --native
+        command:
+        - jina
+        env:
+        - name: POD_UID
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.uid
+        - name: JINA_DEPLOYMENT_NAME
+          value: executor0
+        envFrom:
+        - configMapRef:
+            name: executor0-configmap
+        image: jinahub/0hnlmu3q:6224c90fd2e21378e7eb5b23
+        imagePullPolicy: IfNotPresent
+        name: executor
+        ports:
+        - containerPort: 8080
+        readinessProbe:
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          tcpSocket:
+            port: 8080
