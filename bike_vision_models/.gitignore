@@ -1,0 +1,9 @@
+lightning_logs/*
+data/*
+flagged/*
+
+*.pyc
+*.pyo
+
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
