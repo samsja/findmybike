@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "bike_vision_models"
+version = "0.1.0"
+description = ""
+authors = ["sami jaghouar <sami.jaghouar@hotmail.fr>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+web2dataset = {version = "^0.1.0", extras = ["torch"]}
+vision-transformers = {git = "https://github.com/samsja/pytorch-vision-transformers"}
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.1"
+ipykernel = "^6.13"
+matplotlib = "^3.5"
+ipywidgets = "^7.7"
+jupyterlab-code-formatter = "^1.4.10"
+xeus-python = "^0.12.5"
+black = "^22.3"
+isort = "^5.10"
+pre-commit = "^2.18"
+jupyterlab = "^3.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
