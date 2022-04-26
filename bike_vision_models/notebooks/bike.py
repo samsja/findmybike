@@ -56,20 +56,20 @@ epochs = 100
 # ## Dataset
 
 class CustomW2D(TorchDataset):
-    def __init__(self, path: str ,transform = None):
-        super().__init__(path,transform)
+    def __init__(self, path: str, transform=None):
+        super().__init__(path, transform)
 
         self.classes = []
-        
+
         for doc in self.docs:
-            if (class_:= doc.tags['tag']['origin']) not in self.classes:
+            if (class_ := doc.tags["tag"]["origin"]) not in self.classes:
                 self.classes.append(class_)
-        
-        self.classes = {class_:i for i,class_ in enumerate(self.classes)}
-        
+
+        self.classes = {class_: i for i, class_ in enumerate(self.classes)}
+
     def __getitem__(self, key):
-        tensor,tags = super().__getitem__(key)
-        return tensor, self.classes[tags['tag']['origin']]
+        tensor, tags = super().__getitem__(key)
+        return tensor, self.classes[tags["tag"]["origin"]]
 
 
 # +
@@ -100,7 +100,7 @@ class BikeData(pl.LightningDataModule):
             self.data_path,
             transform=get_transforms(_IMAGE_SHAPE),
         )
-        
+
         self.classes = self.train_dataset.classes
 
         self.val_dataset_base = CustomW2D(
@@ -183,6 +183,13 @@ callbacks = [
     EarlyStopping(monitor="val_loss", mode="min", patience=patience, strict=False),
     increase_image_shape,
     LearningRateMonitor(logging_interval="step"),
+    ModelCheckpoint(
+        dirpath="../data/models_checkpoint",
+        filename="{epoch}-{val_loss:.2f}",
+        save_top_k=3,
+        save_last=True,
+        monitor='val_loss',
+    ),
 ]
 
 trainer = pl.Trainer(
@@ -192,8 +199,7 @@ trainer = pl.Trainer(
     log_every_n_steps=3,
     callbacks=callbacks,
     gradient_clip_val=1.0,
-    #  precision=16,
-    accelerator="cpu"
+    precision=16,
 )
 
 trainer.fit(model, data)
